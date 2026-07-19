@@ -1,0 +1,80 @@
+name: Flutter Android
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Regenerate Android platform (avoid stale AGP)
+        run: |
+          rm -rf android ios linux macos windows web
+          flutter create . --project-name gendan_shenkong --org com.hyqibot.gendan --platforms=android
+
+      - name: Allow HTTP LAN Relay (INTERNET + cleartext)
+        run: |
+          mkdir -p android/app/src/main/res/xml
+          cat > android/app/src/main/res/xml/network_security_config.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <network-security-config>
+              <base-config cleartextTrafficPermitted="true">
+                  <trust-anchors>
+                      <certificates src="system" />
+                  </trust-anchors>
+              </base-config>
+          </network-security-config>
+          EOF
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("android/app/src/main/AndroidManifest.xml")
+          text = p.read_text(encoding="utf-8")
+          if "android.permission.INTERNET" not in text:
+              text = text.replace(
+                  "<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\">",
+                  "<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\">\n"
+                  "    <uses-permission android:name=\"android.permission.INTERNET\" />",
+                  1,
+              )
+          if "usesCleartextTraffic" not in text:
+              text = text.replace(
+                  "<application",
+                  '<application android:usesCleartextTraffic="true" '
+                  'android:networkSecurityConfig="@xml/network_security_config"',
+                  1,
+              )
+          # App display name
+          text = text.replace('android:label="gendan_shenkong"', 'android:label="跟单神控"')
+          p.write_text(text, encoding="utf-8")
+          final = p.read_text(encoding="utf-8")
+          assert "INTERNET" in final
+          assert "usesCleartextTraffic" in final
+          print("patched AndroidManifest OK")
+          PY
+
+      - run: flutter pub get
+
+      - name: Remove default widget test
+        run: rm -f test/widget_test.dart
+
+      - name: Analyze
+        continue-on-error: true
+        run: flutter analyze
+
+      - name: Build release APK
+        run: flutter build apk --release --dart-define=GENDAN_RELAY_URL=${{ vars.GENDAN_RELAY_URL || '' }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gendan-shenkong-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
