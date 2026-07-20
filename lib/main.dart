@@ -11,8 +11,7 @@ import 'pages/test_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  const relayUrl = String.fromEnvironment('GENDAN_RELAY_URL');
-  final store = await SettingsStore.load(defaultRelayUrl: relayUrl);
+  final store = await SettingsStore.load();
   runApp(GendanApp(store: store));
 }
 
@@ -54,6 +53,7 @@ class _GendanHomeState extends State<GendanHome> {
   void _connectEvents() {
     if (!widget.store.isBound) return;
     _events?.cancel();
+    // events() 内部已做 25s ping + 断线自动重连；此处只消费业务事件
     _events = _api.events().listen(
       (event) {
         if (event['type'] == 'alert' && mounted) {

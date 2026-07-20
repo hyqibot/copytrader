@@ -63,6 +63,9 @@ jobs:
 
       - run: flutter pub get
 
+      - name: Generate launcher icons from assets/icon.png
+        run: dart run flutter_launcher_icons
+
       - name: Remove default widget test
         run: rm -f test/widget_test.dart
 
@@ -71,7 +74,8 @@ jobs:
         run: flutter analyze
 
       - name: Build release APK
-        run: flutter build apk --release --dart-define=GENDAN_RELAY_URL=${{ vars.GENDAN_RELAY_URL || '' }}
+        # 与电脑 gendan_remote.env 的 GENDAN_PUBLIC_URL 同名同值
+        run: flutter build apk --release --dart-define=GENDAN_PUBLIC_URL=${{ vars.GENDAN_PUBLIC_URL || 'https://gendan.hyqibot.com' }}
 
       - uses: actions/upload-artifact@v4
         with:

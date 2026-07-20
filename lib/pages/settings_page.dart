@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../api.dart';
 import '../config.dart';
@@ -14,16 +15,35 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  late final _url = TextEditingController(text: widget.store.relayUrl);
   late final _code = TextEditingController(text: widget.store.bindCode);
   String? _msg;
   bool _busy = false;
 
   @override
   void dispose() {
-    _url.dispose();
     _code.dispose();
     super.dispose();
+  }
+
+  Future<void> _importUrlFromClipboard() async {
+    setState(() {
+      _busy = true;
+      _msg = null;
+    });
+    try {
+      final data = await Clipboard.getData(Clipboard.kTextPlain);
+      final raw = (data?.text ?? '').trim();
+      // 允许整段文字里夹一行 URL
+      final match = RegExp(r'https?://[^\s]+').firstMatch(raw);
+      final url = match?.group(0) ?? raw;
+      await widget.store.saveRelayUrl(url);
+      await widget.store.clearToken();
+      setState(() => _msg = '服务器已更新（地址不显示），请重新绑定');
+    } catch (e) {
+      setState(() => _msg = '$e');
+    } finally {
+      setState(() => _busy = false);
+    }
   }
 
   Future<void> _bind() async {
@@ -32,7 +52,7 @@ class _SettingsPageState extends State<SettingsPage> {
       _msg = null;
     });
     try {
-      await widget.store.saveSettings(relayUrl: _url.text, bindCode: _code.text);
+      await widget.store.saveBindCode(_code.text);
       final api = RelayApi(widget.store);
       await api.bind();
       widget.onBound(api);
@@ -49,15 +69,21 @@ class _SettingsPageState extends State<SettingsPage> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        const Text('Relay 地址（局域网或公网，如 http://192.168.1.10:8080）'),
-        TextField(controller: _url, decoration: const InputDecoration(hintText: 'http://IP:8080')),
-        const SizedBox(height: 12),
-        const Text('绑定码 GENDAN_BIND_CODE'),
-        TextField(controller: _code, decoration: const InputDecoration(hintText: '与 PC 端相同')),
+        const Text('绑定码（与电脑端 GENDAN_BIND_CODE 相同）'),
+        TextField(
+          controller: _code,
+          decoration: const InputDecoration(hintText: '绑定码'),
+          obscureText: true,
+        ),
         const SizedBox(height: 16),
         FilledButton(
           onPressed: _busy ? null : _bind,
           child: Text(_busy ? '绑定中…' : '绑定'),
+        ),
+        const SizedBox(height: 12),
+        OutlinedButton(
+          onPressed: _busy ? null : _importUrlFromClipboard,
+          child: const Text('从剪贴板更新服务器（不显示地址）'),
         ),
         if (_msg != null) ...[
           const SizedBox(height: 12),
@@ -65,7 +91,7 @@ class _SettingsPageState extends State<SettingsPage> {
         ],
         const SizedBox(height: 24),
         Text(
-          widget.store.isBound ? '已绑定 device=${widget.store.deviceId}' : '未绑定',
+          widget.store.isBound ? '已绑定' : '未绑定',
           style: Theme.of(context).textTheme.bodySmall,
         ),
       ],

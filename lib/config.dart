@@ -1,33 +1,52 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
+/// 出厂默认（与常见部署一致）。运行后以手机本地保存为准，可被「从剪贴板更新」覆盖，无需重编。
+const String kDefaultPublicUrl = String.fromEnvironment(
+  'GENDAN_PUBLIC_URL',
+  defaultValue: 'https://gendan.hyqibot.com',
+);
+
 class SettingsStore {
-  SettingsStore._(this._prefs, {String? defaultRelayUrl})
-      : relayUrl = _prefs.getString('relay_url') ?? defaultRelayUrl ?? '',
+  SettingsStore._(this._prefs)
+      : relayUrl = (_prefs.getString('relay_url') ?? '').trim().isNotEmpty
+            ? _prefs.getString('relay_url')!.trim()
+            : kDefaultPublicUrl,
         bindCode = _prefs.getString('bind_code') ?? '',
         token = _prefs.getString('token'),
         deviceId = _prefs.getString('device_id') ??
             'app-${DateTime.now().millisecondsSinceEpoch}';
 
   final SharedPreferences _prefs;
+
+  /// 仅本地保存，界面不展示，避免暴露域名/IP。
   String relayUrl;
   String bindCode;
   String? token;
   String deviceId;
 
-  static Future<SettingsStore> load({String? defaultRelayUrl}) async {
+  static Future<SettingsStore> load() async {
     final prefs = await SharedPreferences.getInstance();
-    final store = SettingsStore._(prefs, defaultRelayUrl: defaultRelayUrl);
+    final store = SettingsStore._(prefs);
     await prefs.setString('device_id', store.deviceId);
     return store;
   }
 
   bool get isBound => (token != null && token!.isNotEmpty);
 
-  Future<void> saveSettings({required String relayUrl, required String bindCode}) async {
-    this.relayUrl = relayUrl.trim();
+  Future<void> saveBindCode(String bindCode) async {
     this.bindCode = bindCode.trim();
-    await _prefs.setString('relay_url', this.relayUrl);
     await _prefs.setString('bind_code', this.bindCode);
+  }
+
+  /// 从电脑复制的 `GENDAN_PUBLIC_URL` 写入本地（不在 UI 显示）。
+  Future<void> saveRelayUrl(String url) async {
+    final v = url.trim().replaceFirst(RegExp(r'/+$'), '');
+    if (v.isEmpty) throw StateError('地址为空');
+    if (!v.startsWith('http://') && !v.startsWith('https://')) {
+      throw StateError('地址须以 http:// 或 https:// 开头');
+    }
+    relayUrl = v;
+    await _prefs.setString('relay_url', relayUrl);
   }
 
   Future<void> saveToken(String value) async {
