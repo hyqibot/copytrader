@@ -67,7 +67,7 @@ class _TestPageState extends State<TestPage> {
           ],
         ),
         const SizedBox(height: 20),
-        const Text('交易测试（直接下发，风控由 PC 端原逻辑执行）'),
+        const Text('交易测试'),
         TextField(controller: _code, decoration: const InputDecoration(labelText: '股票代码')),
         TextField(controller: _amount, decoration: const InputDecoration(labelText: '数量'), keyboardType: TextInputType.number),
         TextField(controller: _price, decoration: const InputDecoration(labelText: '价格'), keyboardType: TextInputType.number),

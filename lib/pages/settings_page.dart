@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../api.dart';
 import '../config.dart';
@@ -25,27 +24,6 @@ class _SettingsPageState extends State<SettingsPage> {
     super.dispose();
   }
 
-  Future<void> _importUrlFromClipboard() async {
-    setState(() {
-      _busy = true;
-      _msg = null;
-    });
-    try {
-      final data = await Clipboard.getData(Clipboard.kTextPlain);
-      final raw = (data?.text ?? '').trim();
-      // 允许整段文字里夹一行 URL
-      final match = RegExp(r'https?://[^\s]+').firstMatch(raw);
-      final url = match?.group(0) ?? raw;
-      await widget.store.saveRelayUrl(url);
-      await widget.store.clearToken();
-      setState(() => _msg = '服务器已更新（地址不显示），请重新绑定');
-    } catch (e) {
-      setState(() => _msg = '$e');
-    } finally {
-      setState(() => _busy = false);
-    }
-  }
-
   Future<void> _bind() async {
     setState(() {
       _busy = true;
@@ -69,7 +47,7 @@ class _SettingsPageState extends State<SettingsPage> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        const Text('绑定码（与电脑端 GENDAN_BIND_CODE 相同）'),
+        const Text('绑定码'),
         TextField(
           controller: _code,
           decoration: const InputDecoration(hintText: '绑定码'),
@@ -79,11 +57,6 @@ class _SettingsPageState extends State<SettingsPage> {
         FilledButton(
           onPressed: _busy ? null : _bind,
           child: Text(_busy ? '绑定中…' : '绑定'),
-        ),
-        const SizedBox(height: 12),
-        OutlinedButton(
-          onPressed: _busy ? null : _importUrlFromClipboard,
-          child: const Text('从剪贴板更新服务器（不显示地址）'),
         ),
         if (_msg != null) ...[
           const SizedBox(height: 12),

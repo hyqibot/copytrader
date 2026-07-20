@@ -6,6 +6,7 @@ import 'api.dart';
 import 'config.dart';
 import 'pages/control_page.dart';
 import 'pages/logs_page.dart';
+import 'pages/longhu_ai_page.dart';
 import 'pages/settings_page.dart';
 import 'pages/test_page.dart';
 
@@ -85,6 +86,7 @@ class _GendanHomeState extends State<GendanHome> {
       if (bound) ControlPage(api: _api) else const Center(child: Text('请先在设置中绑定')),
       if (bound) TestPage(api: _api) else const Center(child: Text('请先绑定')),
       if (bound) LogsPage(api: _api) else const Center(child: Text('请先绑定')),
+      const LonghuAiPage(),
       SettingsPage(store: widget.store, onBound: _setApi),
     ];
     return Scaffold(
@@ -97,6 +99,7 @@ class _GendanHomeState extends State<GendanHome> {
           NavigationDestination(icon: Icon(Icons.play_circle), label: '跟单'),
           NavigationDestination(icon: Icon(Icons.science), label: '测试'),
           NavigationDestination(icon: Icon(Icons.article), label: '日志'),
+          NavigationDestination(icon: Icon(Icons.auto_awesome), label: '龙虎ai'),
           NavigationDestination(icon: Icon(Icons.settings), label: '设置'),
         ],
       ),
