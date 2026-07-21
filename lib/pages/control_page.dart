@@ -38,12 +38,22 @@ class _ControlPageState extends State<ControlPage> {
     }
   }
 
+  /// 启动/停止指令先入队，PC Agent 轮询执行后再经心跳回写 running。
+  /// 点击后约 1 秒刷新一次，再补一次以覆盖轮询延迟。
+  Future<void> _refreshAfterControl() async {
+    await Future<void>.delayed(const Duration(seconds: 1));
+    if (!mounted) return;
+    await _refresh();
+    await Future<void>.delayed(const Duration(seconds: 3));
+    if (!mounted) return;
+    await _refresh();
+  }
+
   Future<void> _start(String tabId) async {
     setState(() => _busy = true);
     try {
       await widget.api.start(tabId);
-      await Future<void>.delayed(const Duration(milliseconds: 800));
-      await _refresh();
+      await _refreshAfterControl();
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
     } finally {
@@ -55,8 +65,7 @@ class _ControlPageState extends State<ControlPage> {
     setState(() => _busy = true);
     try {
       await widget.api.stop(tabId);
-      await Future<void>.delayed(const Duration(milliseconds: 800));
-      await _refresh();
+      await _refreshAfterControl();
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
     } finally {

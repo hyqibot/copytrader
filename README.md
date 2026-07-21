@@ -1,20 +1,19 @@
 # 跟单神控 App
 
-手机**只输入绑定码**，不显示服务器地址。
+Flutter 客户端，仓库：[hyqibot/copytrader](https://github.com/hyqibot/copytrader)。
 
-## 地址从哪来？
+## 地址与绑定
 
-| 位置 | 作用 |
-|------|------|
-| 电脑 `gendan_remote.env` → `GENDAN_PUBLIC_URL` | **只有 exe 读取**；启动时复制到剪贴板 |
-| 手机本地存储 | App 真正用来连 Relay；界面不展示 |
-| 出厂默认 | `https://gendan.hyqibot.com`（可被剪贴板更新覆盖） |
+| 项 | 说明 |
+|---|---|
+| 电脑 `gendan_remote.env` → `GENDAN_PUBLIC_URL` | 仅 exe/Agent 读取；须与 App 编译 `--dart-define=GENDAN_PUBLIC_URL` 一致 |
+| 手机设置 | **只填绑定码**，不显示域名/IP |
+| 出厂默认 | `https://gendan.hyqibot.com` |
 
-换公网/局域网：**改 env → 重启 exe → 手机「从剪贴板更新服务器」→ 再绑定**。不必重编 App。
+换公网域名：改电脑 env + CI Variables / dart-define → **重编并安装 APK**。旧版「从剪贴板更新服务器」已移除。
 
-```powershell
-cd app
-flutter pub get
-dart run flutter_launcher_icons
-flutter run
+## 本地构建
+
+```bash
+flutter build apk --release --dart-define=GENDAN_PUBLIC_URL=https://gendan.hyqibot.com
 ```

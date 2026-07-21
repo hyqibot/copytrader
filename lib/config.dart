@@ -1,6 +1,7 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// 出厂默认（与常见部署一致）。运行后以手机本地保存为准，可被「从剪贴板更新」覆盖，无需重编。
+/// 编译期公网地址（与电脑 `gendan_remote.env` 的 `GENDAN_PUBLIC_URL` 同名同值）。
+/// 设置页不展示、不提供剪贴板改址；换域名需重编 APK。
 const String kDefaultPublicUrl = String.fromEnvironment(
   'GENDAN_PUBLIC_URL',
   defaultValue: 'https://gendan.hyqibot.com',
@@ -38,7 +39,7 @@ class SettingsStore {
     await _prefs.setString('bind_code', this.bindCode);
   }
 
-  /// 从电脑复制的 `GENDAN_PUBLIC_URL` 写入本地（不在 UI 显示）。
+  /// 写入本地服务器地址（界面不展示；一般仅调试用）。
   Future<void> saveRelayUrl(String url) async {
     final v = url.trim().replaceFirst(RegExp(r'/+$'), '');
     if (v.isEmpty) throw StateError('地址为空');
