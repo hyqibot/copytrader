@@ -74,8 +74,9 @@ jobs:
         run: flutter analyze
 
       - name: Build release APK
-        # 与电脑 gendan_remote.env 的 GENDAN_PUBLIC_URL 同名同值
-        run: flutter build apk --release --dart-define=GENDAN_PUBLIC_URL=${{ vars.GENDAN_PUBLIC_URL || 'https://gendan.hyqibot.com' }}
+        # 临时直连源站 IP（EdgeOne 误拦期间）。恢复域名后改回 https://gendan.hyqibot.com
+        # 若仓库 Variables 仍有旧值会覆盖 fallback，请同步改 Variables。
+        run: flutter build apk --release --dart-define=GENDAN_PUBLIC_URL=${{ vars.GENDAN_PUBLIC_URL || '[REDACTED]' }}
 
       - uses: actions/upload-artifact@v4
         with:

@@ -1,10 +1,10 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// 编译期公网地址（与电脑 `gendan_remote.env` 的 `GENDAN_PUBLIC_URL` 同名同值）。
-/// 设置页不展示、不提供剪贴板改址；换域名需重编 APK。
+/// 临时直连源站（EdgeOne 备案误拦期间）；设置页不展示。恢复域名后改回 https 并重编。
 const String kDefaultPublicUrl = String.fromEnvironment(
   'GENDAN_PUBLIC_URL',
-  defaultValue: 'https://gendan.hyqibot.com',
+  defaultValue: '[REDACTED]',
 );
 
 class SettingsStore {
