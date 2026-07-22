@@ -1,0 +1,89 @@
+name: Flutter iOS
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-ios-unsigned:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Regenerate iOS platform
+        run: |
+          rm -rf android ios linux macos windows web
+          flutter create . --project-name gendan_shenkong --org com.hyqibot.gendan --platforms=ios
+
+      - name: Allow HTTP cleartext (ATS) + display name
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          p = Path("ios/Runner/Info.plist")
+          text = p.read_text(encoding="utf-8")
+          if "NSAppTransportSecurity" not in text:
+              insert = """
+          	<key>NSAppTransportSecurity</key>
+          	<dict>
+          		<key>NSAllowsArbitraryLoads</key>
+          		<true/>
+          	</dict>
+          """
+              text = text.replace("</dict>\n</plist>", insert + "</dict>\n</plist>", 1)
+          text = text.replace(
+              "<string>gendan_shenkong</string>",
+              "<string>跟单神控</string>",
+          )
+          # CFBundleDisplayName often uses PRODUCT_NAME; also set explicit display name
+          if "CFBundleDisplayName" not in text:
+              text = text.replace(
+                  "<key>CFBundleName</key>",
+                  "<key>CFBundleDisplayName</key>\n	<string>跟单神控</string>\n	<key>CFBundleName</key>",
+                  1,
+              )
+          p.write_text(text, encoding="utf-8")
+          assert "NSAllowsArbitraryLoads" in p.read_text(encoding="utf-8")
+          print("patched Info.plist OK")
+          PY
+
+      - run: flutter pub get
+
+      - name: Generate launcher icons
+        run: dart run flutter_launcher_icons
+        continue-on-error: true
+
+      - name: Remove default widget test
+        run: rm -f test/widget_test.dart
+
+      - name: Build iOS release (unsigned)
+        run: |
+          flutter build ios --release --no-codesign \
+            --dart-define=GENDAN_PUBLIC_URL=${{ vars.GENDAN_PUBLIC_URL || '[REDACTED]' }}
+
+      - name: Package unsigned IPA
+        run: |
+          set -euo pipefail
+          APP_PATH=$(find build/ios/iphoneos -name "*.app" -maxdepth 1 | head -n 1)
+          echo "APP_PATH=$APP_PATH"
+          test -d "$APP_PATH"
+          rm -rf Payload gendan-shenkong-unsigned.ipa
+          mkdir Payload
+          cp -R "$APP_PATH" Payload/
+          # zip as IPA (unsigned; cannot install on device without signing)
+          zip -qry gendan-shenkong-unsigned.ipa Payload
+          ls -lh gendan-shenkong-unsigned.ipa
+          # also keep raw .app for Xcode/manual sign
+          ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" gendan-shenkong-unsigned-app.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gendan-shenkong-ios-unsigned
+          path: |
+            gendan-shenkong-unsigned.ipa
+            gendan-shenkong-unsigned-app.zip
+          if-no-files-found: error
