@@ -1,7 +1,6 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// 编译期公网地址（与电脑 `gendan_remote.env` 的 `GENDAN_PUBLIC_URL` 同名同值）。
-/// 临时直连源站（EdgeOne 备案误拦期间）；设置页不展示。恢复域名后改回 https 并重编。
 const String kDefaultPublicUrl = String.fromEnvironment(
   'GENDAN_PUBLIC_URL',
   defaultValue: '[REDACTED]',
@@ -14,15 +13,16 @@ class SettingsStore {
             : kDefaultPublicUrl,
         bindCode = _prefs.getString('bind_code') ?? '',
         token = _prefs.getString('token'),
+        username = _prefs.getString('username'),
         deviceId = _prefs.getString('device_id') ??
             'app-${DateTime.now().millisecondsSinceEpoch}';
 
   final SharedPreferences _prefs;
 
-  /// 仅本地保存，界面不展示，避免暴露域名/IP。
   String relayUrl;
   String bindCode;
   String? token;
+  String? username;
   String deviceId;
 
   static Future<SettingsStore> load() async {
@@ -32,14 +32,16 @@ class SettingsStore {
     return store;
   }
 
-  bool get isBound => (token != null && token!.isNotEmpty);
+  bool get isLoggedIn => token != null && token!.isNotEmpty && (username?.isNotEmpty ?? false);
+
+  /// 已登录且已绑定交易机（JWT 含 tenant）。
+  bool get isBound => isLoggedIn && (_prefs.getBool('bound') ?? false);
 
   Future<void> saveBindCode(String bindCode) async {
     this.bindCode = bindCode.trim();
     await _prefs.setString('bind_code', this.bindCode);
   }
 
-  /// 写入本地服务器地址（界面不展示；一般仅调试用）。
   Future<void> saveRelayUrl(String url) async {
     final v = url.trim().replaceFirst(RegExp(r'/+$'), '');
     if (v.isEmpty) throw StateError('地址为空');
@@ -50,13 +52,32 @@ class SettingsStore {
     await _prefs.setString('relay_url', relayUrl);
   }
 
-  Future<void> saveToken(String value) async {
-    token = value;
-    await _prefs.setString('token', value);
+  Future<void> saveSession({
+    required String token,
+    required String username,
+    required bool bound,
+    String? deviceId,
+  }) async {
+    this.token = token;
+    this.username = username;
+    await _prefs.setString('token', token);
+    await _prefs.setString('username', username);
+    await _prefs.setBool('bound', bound);
+    if (deviceId != null && deviceId.isNotEmpty) {
+      this.deviceId = deviceId;
+      await _prefs.setString('device_id', deviceId);
+    }
   }
 
-  Future<void> clearToken() async {
+  Future<void> setBound(bool value) async {
+    await _prefs.setBool('bound', value);
+  }
+
+  Future<void> clearSession() async {
     token = null;
+    username = null;
     await _prefs.remove('token');
+    await _prefs.remove('username');
+    await _prefs.setBool('bound', false);
   }
 }

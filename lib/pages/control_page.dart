@@ -17,6 +17,8 @@ class _ControlPageState extends State<ControlPage> {
   bool _online = false;
   String? _error;
   bool _busy = false;
+  String? _controlTip;
+  String? _controlOwner;
 
   @override
   void initState() {
@@ -28,10 +30,19 @@ class _ControlPageState extends State<ControlPage> {
     try {
       final st = await widget.api.status();
       final agent = Map<String, dynamic>.from(st['agent'] as Map? ?? {});
+      final control = Map<String, dynamic>.from(st['control'] as Map? ?? {});
+      final owner = control['owner_username']?.toString();
+      final rem = control['lease_remaining_sec'];
       setState(() {
         _tabs = Map<String, dynamic>.from(st['tabs'] as Map? ?? {});
         _online = agent['online'] == true;
         _error = null;
+        _controlTip = st['tip']?.toString();
+        if (owner != null && owner.isNotEmpty) {
+          _controlOwner = '启停控制：$owner（剩余 $rem 秒）';
+        } else {
+          _controlOwner = '当前无人持有启停控制权（有权益用户点启动/停止可获取 1 小时租约）';
+        }
       });
     } catch (e) {
       setState(() => _error = '$e');
@@ -207,6 +218,16 @@ class _ControlPageState extends State<ControlPage> {
             subtitle: Text(_error ?? '下拉刷新'),
             trailing: IconButton(onPressed: _busy ? null : _refresh, icon: const Icon(Icons.refresh)),
           ),
+          if (_controlOwner != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: Text(_controlOwner!, style: Theme.of(context).textTheme.bodyMedium),
+            ),
+          if (_controlTip != null && _controlTip!.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Text(_controlTip!, style: Theme.of(context).textTheme.bodySmall),
+            ),
           for (final tid in tabOrder)
             _TabCard(
               tabId: tid,

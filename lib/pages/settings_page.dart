@@ -4,27 +4,90 @@ import '../api.dart';
 import '../config.dart';
 
 class SettingsPage extends StatefulWidget {
-  const SettingsPage({super.key, required this.store, required this.onBound});
+  const SettingsPage({
+    super.key,
+    required this.store,
+    required this.onSessionChanged,
+  });
 
   final SettingsStore store;
-  final ValueChanged<RelayApi> onBound;
+  final ValueChanged<RelayApi> onSessionChanged;
 
   @override
   State<SettingsPage> createState() => _SettingsPageState();
 }
 
 class _SettingsPageState extends State<SettingsPage> {
+  late final _user = TextEditingController();
+  late final _pass = TextEditingController();
   late final _code = TextEditingController(text: widget.store.bindCode);
   String? _msg;
   bool _busy = false;
 
   @override
   void dispose() {
+    _user.dispose();
+    _pass.dispose();
     _code.dispose();
     super.dispose();
   }
 
+  Future<void> _register() async {
+    setState(() {
+      _busy = true;
+      _msg = null;
+    });
+    try {
+      final api = RelayApi(widget.store);
+      final res = await api.register(_user.text.trim(), _pass.text);
+      widget.onSessionChanged(api);
+      final tip = res['tip']?.toString() ?? '';
+      final gift = res['gift_points'];
+      setState(() {
+        _msg = '注册成功，已赠送 $gift 积分。请兑换权益后绑定。\n$tip';
+      });
+      if (mounted && tip.isNotEmpty) {
+        await showDialog<void>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('注册成功'),
+            content: Text('已赠送 $gift 积分。\n\n$tip'),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('知道了')),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      setState(() => _msg = '$e');
+    } finally {
+      setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _login() async {
+    setState(() {
+      _busy = true;
+      _msg = null;
+    });
+    try {
+      final api = RelayApi(widget.store);
+      final res = await api.login(_user.text.trim(), _pass.text);
+      widget.onSessionChanged(api);
+      final tip = res['tip']?.toString() ?? '';
+      setState(() => _msg = '登录成功。请绑定后使用跟单/日志/测试。\n$tip');
+    } catch (e) {
+      setState(() => _msg = '$e');
+    } finally {
+      setState(() => _busy = false);
+    }
+  }
+
   Future<void> _bind() async {
+    if (!widget.store.isLoggedIn) {
+      setState(() => _msg = '请先登录或注册');
+      return;
+    }
     setState(() {
       _busy = true;
       _msg = null;
@@ -33,7 +96,7 @@ class _SettingsPageState extends State<SettingsPage> {
       await widget.store.saveBindCode(_code.text);
       final api = RelayApi(widget.store);
       await api.bind();
-      widget.onBound(api);
+      widget.onSessionChanged(api);
       setState(() => _msg = '绑定成功');
     } catch (e) {
       setState(() => _msg = '$e');
@@ -42,31 +105,60 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
+  Future<void> _logout() async {
+    await widget.store.clearSession();
+    widget.onSessionChanged(RelayApi(widget.store));
+    setState(() => _msg = '已退出登录');
+  }
+
   @override
   Widget build(BuildContext context) {
+    final logged = widget.store.isLoggedIn;
+    final bound = widget.store.isBound;
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        const Text('绑定码'),
+        Text(logged ? '已登录：${widget.store.username}' : '账号登录 / 注册',
+            style: Theme.of(context).textTheme.titleMedium),
+        if (!logged) ...[
+          TextField(controller: _user, decoration: const InputDecoration(hintText: '用户名')),
+          TextField(
+            controller: _pass,
+            decoration: const InputDecoration(hintText: '密码'),
+            obscureText: true,
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              FilledButton(onPressed: _busy ? null : _login, child: const Text('登录')),
+              const SizedBox(width: 8),
+              OutlinedButton(onPressed: _busy ? null : _register, child: const Text('注册')),
+            ],
+          ),
+        ] else ...[
+          TextButton(onPressed: _busy ? null : _logout, child: const Text('退出登录')),
+        ],
+        const Divider(height: 32),
+        const Text('绑定码（共用，登录后绑定）'),
         TextField(
           controller: _code,
           decoration: const InputDecoration(hintText: '绑定码'),
           obscureText: true,
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 8),
         FilledButton(
           onPressed: _busy ? null : _bind,
-          child: Text(_busy ? '绑定中…' : '绑定'),
+          child: Text(_busy ? '处理中…' : '绑定交易机'),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          '登录：${logged ? '是' : '否'}　绑定：${bound ? '是' : '否'}',
+          style: Theme.of(context).textTheme.bodySmall,
         ),
         if (_msg != null) ...[
           const SizedBox(height: 12),
           Text(_msg!),
         ],
-        const SizedBox(height: 24),
-        Text(
-          widget.store.isBound ? '已绑定' : '未绑定',
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
       ],
     );
   }

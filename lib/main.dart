@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import 'api.dart';
 import 'config.dart';
+import 'pages/account_page.dart';
 import 'pages/control_page.dart';
 import 'pages/logs_page.dart';
 import 'pages/longhu_ai_page.dart';
@@ -53,9 +54,12 @@ class _GendanHomeState extends State<GendanHome> {
   }
 
   void _connectEvents() {
-    if (!widget.store.isBound) return;
+    if (!widget.store.isBound) {
+      _events?.cancel();
+      _events = null;
+      return;
+    }
     _events?.cancel();
-    // 单路 WS：告警 + 实时日志（日志页订阅 eventBus）
     _events = _api.events().listen(
       (event) {
         if (!_eventBus.isClosed) _eventBus.add(event);
@@ -70,7 +74,7 @@ class _GendanHomeState extends State<GendanHome> {
     );
   }
 
-  void _setApi(RelayApi api) {
+  void _onSessionChanged(RelayApi api) {
     setState(() => _api = api);
     _connectEvents();
   }
@@ -82,19 +86,23 @@ class _GendanHomeState extends State<GendanHome> {
     super.dispose();
   }
 
+  Widget _needLogin() => const Center(child: Text('请先在「设置」注册/登录'));
+  Widget _needBind() => const Center(child: Text('请先登录并在「设置」绑定交易机'));
+
   @override
   Widget build(BuildContext context) {
+    final logged = widget.store.isLoggedIn;
     final bound = widget.store.isBound;
-    // IndexedStack：切走日志页仍保持订阅，回来能继续滚动
     final pages = <Widget>[
-      if (bound) ControlPage(api: _api) else const Center(child: Text('请先在设置中绑定')),
-      if (bound) TestPage(api: _api) else const Center(child: Text('请先绑定')),
+      if (bound) ControlPage(api: _api) else (logged ? _needBind() : _needLogin()),
+      if (bound) TestPage(api: _api) else (logged ? _needBind() : _needLogin()),
       if (bound)
         LogsPage(api: _api, events: _eventBus.stream)
       else
-        const Center(child: Text('请先绑定')),
+        (logged ? _needBind() : _needLogin()),
       const LonghuAiPage(),
-      SettingsPage(store: widget.store, onBound: _setApi),
+      if (logged) AccountPage(api: _api, store: widget.store) else _needLogin(),
+      SettingsPage(store: widget.store, onSessionChanged: _onSessionChanged),
     ];
     return Scaffold(
       appBar: AppBar(title: const Text('跟单神控')),
@@ -107,6 +115,7 @@ class _GendanHomeState extends State<GendanHome> {
           NavigationDestination(icon: Icon(Icons.science), label: '测试'),
           NavigationDestination(icon: Icon(Icons.article), label: '日志'),
           NavigationDestination(icon: Icon(Icons.auto_awesome), label: '龙虎ai'),
+          NavigationDestination(icon: Icon(Icons.person), label: '我的'),
           NavigationDestination(icon: Icon(Icons.settings), label: '设置'),
         ],
       ),

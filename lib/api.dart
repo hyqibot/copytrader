@@ -29,10 +29,75 @@ class RelayApi {
         if (store.token != null) 'Authorization': 'Bearer ${store.token}',
       };
 
+  Future<Map<String, dynamic>> register(String username, String password) async {
+    final response = await _client.post(
+      _uri('/v1/auth/register'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'username': username, 'password': password}),
+    );
+    final body = _decode(response);
+    final token = body['token'] as String?;
+    final user = Map<String, dynamic>.from(body['user'] as Map? ?? {});
+    final name = user['username']?.toString() ?? username;
+    if (token == null || token.isEmpty) throw StateError('未返回 token');
+    await store.saveSession(
+      token: token,
+      username: name,
+      bound: false,
+      deviceId: body['device_id']?.toString(),
+    );
+    return body;
+  }
+
+  Future<Map<String, dynamic>> login(String username, String password) async {
+    final response = await _client.post(
+      _uri('/v1/auth/login'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'username': username, 'password': password}),
+    );
+    final body = _decode(response);
+    final token = body['token'] as String?;
+    final user = Map<String, dynamic>.from(body['user'] as Map? ?? {});
+    final name = user['username']?.toString() ?? username;
+    if (token == null || token.isEmpty) throw StateError('未返回 token');
+    await store.saveSession(
+      token: token,
+      username: name,
+      bound: false,
+      deviceId: body['device_id']?.toString(),
+    );
+    return body;
+  }
+
+  Future<Map<String, dynamic>> me() => _get('/v1/me');
+
+  Future<Map<String, dynamic>> redeem(String plan) async {
+    final response = await _client.post(
+      _uri('/v1/points/redeem'),
+      headers: _headers,
+      body: jsonEncode({'plan': plan}),
+    );
+    return _decode(response);
+  }
+
+  Future<Map<String, dynamic>> redeemCard(String code) async {
+    final response = await _client.post(
+      _uri('/v1/points/card'),
+      headers: _headers,
+      body: jsonEncode({'code': code}),
+    );
+    return _decode(response);
+  }
+
+  Future<Map<String, dynamic>> rechargeInfo() async {
+    final response = await _client.get(_uri('/v1/recharge/info'));
+    return _decode(response);
+  }
+
   Future<Map<String, dynamic>> bind() async {
     final response = await _client.post(
       _uri('/v1/auth/bind'),
-      headers: {'Content-Type': 'application/json'},
+      headers: _headers,
       body: jsonEncode({
         'role': 'app',
         'bind_code': store.bindCode,
@@ -42,7 +107,12 @@ class RelayApi {
     final body = _decode(response);
     final token = body['token'] as String?;
     if (token == null || token.isEmpty) throw StateError('未返回 token');
-    await store.saveToken(token);
+    await store.saveSession(
+      token: token,
+      username: store.username ?? '',
+      bound: true,
+      deviceId: store.deviceId,
+    );
     return body;
   }
 
@@ -203,15 +273,19 @@ class RelayApi {
 
   Map<String, dynamic> _decode(http.Response response) {
     final text = response.body;
-    Map<String, dynamic> body;
+    dynamic decoded;
     try {
-      body = jsonDecode(text.isEmpty ? '{}' : text) as Map<String, dynamic>;
+      decoded = jsonDecode(text.isEmpty ? '{}' : text);
     } catch (_) {
       throw StateError('HTTP ${response.statusCode}: $text');
     }
     if (response.statusCode >= 400) {
-      throw StateError('HTTP ${response.statusCode}: ${body['detail'] ?? text}');
+      var detail = decoded;
+      if (decoded is Map) detail = decoded['detail'] ?? text;
+      throw StateError('HTTP ${response.statusCode}: $detail');
     }
-    return body;
+    if (decoded is Map<String, dynamic>) return decoded;
+    if (decoded is Map) return Map<String, dynamic>.from(decoded);
+    return <String, dynamic>{};
   }
 }
