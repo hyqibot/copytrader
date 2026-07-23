@@ -88,7 +88,7 @@ class RelayApi {
         'price': price,
       });
 
-  Future<List<dynamic>> logs({int limit = 200}) async =>
+  Future<List<dynamic>> logs({int limit = 500}) async =>
       (await _get('/v1/logs', {'limit': '$limit'}))['logs'] as List<dynamic>? ?? [];
 
   /// 长连接事件流：定时 `ping` 保活 + 断线指数退避自动重连。
