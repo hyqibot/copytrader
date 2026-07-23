@@ -124,6 +124,8 @@ class RelayApi {
   Future<void> start(String tabId) => _post('/v1/tabs/$tabId/start');
   Future<void> stop(String tabId) => _post('/v1/tabs/$tabId/stop');
 
+  Future<Map<String, dynamic>> releaseControl() => _postJson('/v1/control/release');
+
   Future<void> updateConfig(String tabId, Map<String, dynamic> config) async {
     final response = await _client.put(
       _uri('/v1/tabs/$tabId/config'),
@@ -269,6 +271,15 @@ class RelayApi {
       body: body == null ? null : jsonEncode(body),
     );
     _decode(response);
+  }
+
+  Future<Map<String, dynamic>> _postJson(String path, [Map<String, dynamic>? body]) async {
+    final response = await _client.post(
+      _uri(path),
+      headers: _headers,
+      body: body == null ? null : jsonEncode(body),
+    );
+    return _decode(response);
   }
 
   Map<String, dynamic> _decode(http.Response response) {

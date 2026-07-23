@@ -19,6 +19,7 @@ class _ControlPageState extends State<ControlPage> {
   bool _busy = false;
   String? _controlTip;
   String? _controlOwner;
+  bool _isControlMine = false;
 
   @override
   void initState() {
@@ -38,6 +39,7 @@ class _ControlPageState extends State<ControlPage> {
         _online = agent['online'] == true;
         _error = null;
         _controlTip = st['tip']?.toString();
+        _isControlMine = control['is_mine'] == true;
         if (owner != null && owner.isNotEmpty) {
           _controlOwner = '启停控制：$owner（剩余 $rem 秒）';
         } else {
@@ -77,6 +79,23 @@ class _ControlPageState extends State<ControlPage> {
     try {
       await widget.api.stop(tabId);
       await _refreshAfterControl();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _releaseControl() async {
+    setState(() => _busy = true);
+    try {
+      await widget.api.releaseControl();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('已释放启停控制权')),
+        );
+      }
+      await _refresh();
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
     } finally {
@@ -227,6 +246,17 @@ class _ControlPageState extends State<ControlPage> {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
               child: Text(_controlTip!, style: Theme.of(context).textTheme.bodySmall),
+            ),
+          if (_isControlMine)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: OutlinedButton(
+                  onPressed: _busy ? null : _releaseControl,
+                  child: const Text('释放控制权'),
+                ),
+              ),
             ),
           for (final tid in tabOrder)
             _TabCard(
