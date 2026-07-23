@@ -153,6 +153,20 @@ class _AccountPageState extends State<AccountPage> {
           const SizedBox(height: 8),
           Text('1. 按下方信息转账，备注：$remark（例：充值+$uname）'),
           if (wechat.isNotEmpty) Text('微信号/收款：$wechat'),
+          if ((_recharge?['qr_url']?.toString() ?? '').isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text('收款码：', style: Theme.of(context).textTheme.bodySmall),
+            const SizedBox(height: 4),
+            Center(
+              child: Image.network(
+                _recharge!['qr_url'].toString(),
+                height: 180,
+                width: 180,
+                fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) => const Text('收款码加载失败'),
+              ),
+            ),
+          ],
           if (hint.isNotEmpty) Text(hint, style: Theme.of(context).textTheme.bodySmall),
           const SizedBox(height: 8),
           Text('2. 到账后客服发卡密，在此兑换：'),
