@@ -163,6 +163,29 @@ class RelayApi {
   Future<List<dynamic>> logs({int limit = 500}) async =>
       (await _get('/v1/logs', {'limit': '$limit'}))['logs'] as List<dynamic>? ?? [];
 
+  Future<List<Map<String, dynamic>>> comments({int limit = 200}) async {
+    final body = await _get('/v1/comments', {'limit': '$limit'});
+    final raw = body['comments'] as List<dynamic>? ?? [];
+    return raw.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+  }
+
+  Future<Map<String, dynamic>> createComment(String content, {String? parentId}) async {
+    final response = await _client.post(
+      _uri('/v1/comments'),
+      headers: _headers,
+      body: jsonEncode({
+        'content': content,
+        if (parentId != null) 'parent_id': parentId,
+      }),
+    );
+    return _decode(response);
+  }
+
+  Future<void> deleteComment(String id) async {
+    final response = await _client.delete(_uri('/v1/comments/$id'), headers: _headers);
+    _decode(response);
+  }
+
   /// 长连接事件流：定时 `ping` 保活 + 断线指数退避自动重连。
   /// 取消订阅后停止重连。
   Stream<Map<String, dynamic>> events({
