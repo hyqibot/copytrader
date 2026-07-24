@@ -34,12 +34,12 @@ Flutter 客户端，仓库：[hyqibot/copytrader](https://github.com/hyqibot/cop
 |---|---|
 | 电脑 `gendan_remote.env` → `GENDAN_PUBLIC_URL` | 仅 exe/Agent 读取；须与 App 编译 `--dart-define=GENDAN_PUBLIC_URL` 一致 |
 | 手机设置 | **只填绑定码**，不显示域名/IP |
-| 出厂默认 | `[REDACTED]`（临时直连；EdgeOne 恢复后改回域名） |
+| 出厂默认 | 由 CI Variables / `--dart-define=GENDAN_PUBLIC_URL` 注入（**勿在公开 README 写死 IP/域名**） |
 
 换公网地址：改电脑 env + CI Variables / dart-define → **重编并安装 APK**。已安装过的手机若绑过旧地址，请先**清数据/重装**再绑定。
 
 ## 本地构建
 
 ```bash
-flutter build apk --release --dart-define=GENDAN_PUBLIC_URL=[REDACTED]
+flutter build apk --release --dart-define=GENDAN_PUBLIC_URL=<你的公网地址>
 ```
