@@ -61,9 +61,15 @@ jobs:
         run: rm -f test/widget_test.dart
 
       - name: Build iOS release (unsigned)
+        env:
+          GENDAN_PUBLIC_URL: ${{ secrets.GENDAN_PUBLIC_URL }}
         run: |
+          if [ -z "$GENDAN_PUBLIC_URL" ]; then
+            echo "Missing repository secret GENDAN_PUBLIC_URL"
+            exit 1
+          fi
           flutter build ios --release --no-codesign \
-            --dart-define=GENDAN_PUBLIC_URL=${{ vars.GENDAN_PUBLIC_URL || '[REDACTED]' }}
+            --dart-define=GENDAN_PUBLIC_URL="$GENDAN_PUBLIC_URL"
 
       - name: Package unsigned IPA
         run: |

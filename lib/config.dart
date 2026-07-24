@@ -1,9 +1,10 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// 编译期公网地址（与电脑 `gendan_remote.env` 的 `GENDAN_PUBLIC_URL` 同名同值）。
+/// 正式包须通过 `--dart-define=GENDAN_PUBLIC_URL=...` 或 CI Secret 注入；源码不写死公网地址。
 const String kDefaultPublicUrl = String.fromEnvironment(
   'GENDAN_PUBLIC_URL',
-  defaultValue: '[REDACTED]',
+  defaultValue: '',
 );
 
 class SettingsStore {

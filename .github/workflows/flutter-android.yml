@@ -133,9 +133,15 @@ jobs:
         run: flutter analyze
 
       - name: Build release APK
-        # 临时直连源站 IP（EdgeOne 误拦期间）。恢复域名后改回 https://gendan.hyqibot.com
-        # 若仓库 Variables 仍有旧值会覆盖 fallback，请同步改 Variables。
-        run: flutter build apk --release --dart-define=GENDAN_PUBLIC_URL=${{ vars.GENDAN_PUBLIC_URL || '[REDACTED]' }}
+        env:
+          GENDAN_PUBLIC_URL: ${{ secrets.GENDAN_PUBLIC_URL }}
+        run: |
+          if [ -z "$GENDAN_PUBLIC_URL" ]; then
+            echo "Missing repository secret GENDAN_PUBLIC_URL"
+            exit 1
+          fi
+          # 公网地址仅存在于 Secret，勿写回仓库
+          flutter build apk --release --dart-define=GENDAN_PUBLIC_URL="$GENDAN_PUBLIC_URL"
 
       - uses: actions/upload-artifact@v4
         with:
