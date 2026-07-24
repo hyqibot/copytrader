@@ -68,6 +68,58 @@ jobs:
           print("patched AndroidManifest OK")
           PY
 
+      - name: Enable core library desugaring (flutter_local_notifications)
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          candidates = [
+              Path("android/app/build.gradle.kts"),
+              Path("android/app/build.gradle"),
+          ]
+          p = next((c for c in candidates if c.is_file()), None)
+          assert p is not None, "android/app/build.gradle(.kts) missing"
+          text = p.read_text(encoding="utf-8")
+          if p.suffix == ".kts":
+              if "isCoreLibraryDesugaringEnabled" not in text:
+                  if "compileOptions {" in text:
+                      text = text.replace(
+                          "compileOptions {",
+                          "compileOptions {\n        isCoreLibraryDesugaringEnabled = true",
+                          1,
+                      )
+                  else:
+                      raise SystemExit("compileOptions block not found in build.gradle.kts")
+              if "coreLibraryDesugaring(" not in text:
+                  if "dependencies {" in text:
+                      text = text.replace(
+                          "dependencies {",
+                          'dependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")',
+                          1,
+                      )
+                  else:
+                      text += '\n\ndependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")\n}\n'
+          else:
+              if "coreLibraryDesugaringEnabled" not in text:
+                  text = text.replace(
+                      "compileOptions {",
+                      "compileOptions {\n        coreLibraryDesugaringEnabled true",
+                      1,
+                  )
+              if "desugar_jdk_libs" not in text:
+                  if "dependencies {" in text:
+                      text = text.replace(
+                          "dependencies {",
+                          "dependencies {\n    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4'",
+                          1,
+                      )
+                  else:
+                      text += "\n\ndependencies {\n    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4'\n}\n"
+          p.write_text(text, encoding="utf-8")
+          out = p.read_text(encoding="utf-8")
+          assert "desugar" in out.lower()
+          print(f"patched {p} for desugaring OK")
+          PY
+
       - run: flutter pub get
 
       - name: Generate launcher icons from assets/icon.png
