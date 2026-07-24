@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import 'api.dart';
 import 'config.dart';
+import 'notifications.dart';
 import 'pages/account_page.dart';
 import 'pages/control_page.dart';
 import 'pages/logs_page.dart';
@@ -13,6 +14,7 @@ import 'pages/test_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await TradeNotifications.init();
   final store = await SettingsStore.load();
   runApp(GendanApp(store: store));
 }
@@ -63,11 +65,16 @@ class _GendanHomeState extends State<GendanHome> {
     _events = _api.events().listen(
       (event) {
         if (!_eventBus.isClosed) _eventBus.add(event);
-        if (event['type'] == 'alert' && mounted) {
-          final data = Map<String, dynamic>.from(event['data'] as Map);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('${data['title']}: ${data['body']}')),
-          );
+        if (event['type'] == 'alert') {
+          final data = Map<String, dynamic>.from(event['data'] as Map? ?? {});
+          final title = data['title']?.toString() ?? '跟单通知';
+          final body = data['body']?.toString() ?? '';
+          unawaited(TradeNotifications.showTradeAlert(title: title, body: body));
+          if (mounted && body.isNotEmpty) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('$title：$body'), duration: const Duration(seconds: 4)),
+            );
+          }
         }
       },
       onError: (_) {},

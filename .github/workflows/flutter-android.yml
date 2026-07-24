@@ -45,6 +45,13 @@ jobs:
                   "    <uses-permission android:name=\"android.permission.INTERNET\" />",
                   1,
               )
+          if "POST_NOTIFICATIONS" not in text:
+              text = text.replace(
+                  "<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\">",
+                  "<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\">\n"
+                  "    <uses-permission android:name=\"android.permission.POST_NOTIFICATIONS\" />",
+                  1,
+              )
           if "usesCleartextTraffic" not in text:
               text = text.replace(
                   "<application",
