@@ -7,6 +7,7 @@ import 'config.dart';
 import 'notifications.dart';
 import 'pages/account_page.dart';
 import 'pages/control_page.dart';
+import 'pages/huanyin_chaoi_page.dart';
 import 'pages/logs_page.dart';
 import 'pages/longhu_ai_page.dart';
 import 'pages/settings_page.dart';
@@ -107,6 +108,7 @@ class _GendanHomeState extends State<GendanHome> {
         LogsPage(api: _api, events: _eventBus.stream)
       else
         (logged ? _needBind() : _needLogin()),
+      if (logged) const HuanyinChaoiPage() else _needLogin(),
       const LonghuAiPage(),
       if (logged) AccountPage(api: _api, store: widget.store) else _needLogin(),
       SettingsPage(store: widget.store, onSessionChanged: _onSessionChanged),
@@ -121,6 +123,7 @@ class _GendanHomeState extends State<GendanHome> {
           NavigationDestination(icon: Icon(Icons.play_circle), label: '跟单'),
           NavigationDestination(icon: Icon(Icons.science), label: '测试'),
           NavigationDestination(icon: Icon(Icons.article), label: '日志'),
+          NavigationDestination(icon: Icon(Icons.smart_toy), label: '幻银超i'),
           NavigationDestination(icon: Icon(Icons.auto_awesome), label: '龙虎ai'),
           NavigationDestination(icon: Icon(Icons.person), label: '我的'),
           NavigationDestination(icon: Icon(Icons.settings), label: '设置'),
