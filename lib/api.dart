@@ -29,7 +29,17 @@ class RelayApi {
         if (store.token != null) 'Authorization': 'Bearer ${store.token}',
       };
 
-  Future<Map<String, dynamic>> register(String username, String password) async {
+  Future<Map<String, dynamic>> fetchCaptcha() async {
+    final response = await _client.get(_uri('/v1/auth/captcha'));
+    return _decode(response);
+  }
+
+  Future<Map<String, dynamic>> register(
+    String username,
+    String password, {
+    required String captchaId,
+    required String captchaAnswer,
+  }) async {
     final response = await _client.post(
       _uri('/v1/auth/register'),
       headers: {'Content-Type': 'application/json'},
@@ -37,6 +47,8 @@ class RelayApi {
         'username': username,
         'password': password,
         'device_id': store.deviceId,
+        'captcha_id': captchaId,
+        'captcha_answer': captchaAnswer,
       }),
     );
     final body = _decode(response);

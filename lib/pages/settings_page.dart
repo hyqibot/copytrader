@@ -21,25 +21,71 @@ class _SettingsPageState extends State<SettingsPage> {
   late final _user = TextEditingController();
   late final _pass = TextEditingController();
   late final _code = TextEditingController(text: widget.store.bindCode);
+  late final _captchaAnswer = TextEditingController();
+  String? _captchaId;
+  String? _captchaQuestion;
   String? _msg;
   bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (!widget.store.isLoggedIn) {
+      _refreshCaptcha();
+    }
+  }
 
   @override
   void dispose() {
     _user.dispose();
     _pass.dispose();
     _code.dispose();
+    _captchaAnswer.dispose();
     super.dispose();
   }
 
+  Future<void> _refreshCaptcha() async {
+    try {
+      final api = RelayApi(widget.store);
+      final res = await api.fetchCaptcha();
+      if (!mounted) return;
+      setState(() {
+        _captchaId = res['captcha_id']?.toString();
+        _captchaQuestion = res['question']?.toString() ?? '验证码加载失败';
+        _captchaAnswer.clear();
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _captchaId = null;
+        _captchaQuestion = '验证码加载失败：$e';
+      });
+    }
+  }
+
   Future<void> _register() async {
+    final captchaId = (_captchaId ?? '').trim();
+    final answer = _captchaAnswer.text.trim();
+    if (captchaId.isEmpty) {
+      setState(() => _msg = '请先刷新算术验证码');
+      return;
+    }
+    if (answer.isEmpty) {
+      setState(() => _msg = '请填写验证码答案');
+      return;
+    }
     setState(() {
       _busy = true;
       _msg = null;
     });
     try {
       final api = RelayApi(widget.store);
-      final res = await api.register(_user.text.trim(), _pass.text);
+      final res = await api.register(
+        _user.text.trim(),
+        _pass.text,
+        captchaId: captchaId,
+        captchaAnswer: answer,
+      );
       widget.onSessionChanged(api);
       final tip = res['tip']?.toString() ?? '';
       final gift = (res['gift_points'] as num?)?.toInt() ?? 0;
@@ -63,6 +109,7 @@ class _SettingsPageState extends State<SettingsPage> {
       }
     } catch (e) {
       setState(() => _msg = '$e');
+      await _refreshCaptcha();
     } finally {
       setState(() => _busy = false);
     }
@@ -112,6 +159,7 @@ class _SettingsPageState extends State<SettingsPage> {
     await widget.store.clearSession();
     widget.onSessionChanged(RelayApi(widget.store));
     setState(() => _msg = '已退出登录');
+    await _refreshCaptcha();
   }
 
   @override
@@ -129,6 +177,26 @@ class _SettingsPageState extends State<SettingsPage> {
             controller: _pass,
             decoration: const InputDecoration(hintText: '密码'),
             obscureText: true,
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  _captchaQuestion == null ? '验证码加载中…' : '算一算：$_captchaQuestion',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+              ),
+              TextButton(
+                onPressed: _busy ? null : _refreshCaptcha,
+                child: const Text('换一题'),
+              ),
+            ],
+          ),
+          TextField(
+            controller: _captchaAnswer,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(hintText: '验证码答案'),
           ),
           const SizedBox(height: 8),
           Row(
