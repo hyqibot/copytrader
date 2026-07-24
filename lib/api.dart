@@ -33,18 +33,23 @@ class RelayApi {
     final response = await _client.post(
       _uri('/v1/auth/register'),
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'username': username, 'password': password}),
+      body: jsonEncode({
+        'username': username,
+        'password': password,
+        'device_id': store.deviceId,
+      }),
     );
     final body = _decode(response);
     final token = body['token'] as String?;
     final user = Map<String, dynamic>.from(body['user'] as Map? ?? {});
     final name = user['username']?.toString() ?? username;
     if (token == null || token.isEmpty) throw StateError('未返回 token');
+    // 保留本地稳定 device_id，勿被服务端随机 ID 覆盖
     await store.saveSession(
       token: token,
       username: name,
       bound: false,
-      deviceId: body['device_id']?.toString(),
+      deviceId: store.deviceId,
     );
     return body;
   }
@@ -53,7 +58,11 @@ class RelayApi {
     final response = await _client.post(
       _uri('/v1/auth/login'),
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'username': username, 'password': password}),
+      body: jsonEncode({
+        'username': username,
+        'password': password,
+        'device_id': store.deviceId,
+      }),
     );
     final body = _decode(response);
     final token = body['token'] as String?;
@@ -64,7 +73,7 @@ class RelayApi {
       token: token,
       username: name,
       bound: false,
-      deviceId: body['device_id']?.toString(),
+      deviceId: store.deviceId,
     );
     return body;
   }

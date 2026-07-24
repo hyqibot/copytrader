@@ -42,16 +42,19 @@ class _SettingsPageState extends State<SettingsPage> {
       final res = await api.register(_user.text.trim(), _pass.text);
       widget.onSessionChanged(api);
       final tip = res['tip']?.toString() ?? '';
-      final gift = res['gift_points'];
+      final gift = (res['gift_points'] as num?)?.toInt() ?? 0;
+      final giftLine = gift > 0
+          ? '本机首次注册，已赠送 $gift 积分。请兑换权益后绑定。'
+          : '本设备已领取过注册赠送（或未识别设备），本次赠送 0 积分。可充值后兑换权益。';
       setState(() {
-        _msg = '注册成功，已赠送 $gift 积分。请兑换权益后绑定。\n$tip';
+        _msg = '注册成功。$giftLine\n$tip';
       });
-      if (mounted && tip.isNotEmpty) {
+      if (mounted) {
         await showDialog<void>(
           context: context,
           builder: (ctx) => AlertDialog(
             title: const Text('注册成功'),
-            content: Text('已赠送 $gift 积分。\n\n$tip'),
+            content: Text('$giftLine\n\n$tip'),
             actions: [
               TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('知道了')),
             ],
